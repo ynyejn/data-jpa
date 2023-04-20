@@ -16,6 +16,8 @@ class MemberRepositoryTest {
     @Autowired MemberRepository memberRepository;
     @Test
     public void testMember(){
+        //스프링 데이터 jpa가 구현 클래스 대신생성, 따라서 인터페이스지만 사용가능
+        System.out.println("memberRepository.getClass() = " + memberRepository.getClass());
         Member member = new Member("memberA");
         Member savedMember = memberRepository.save(member);
 
