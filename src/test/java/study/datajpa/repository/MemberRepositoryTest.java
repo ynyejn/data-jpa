@@ -1,8 +1,14 @@
 package study.datajpa.repository;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.Sort;
 import org.springframework.test.annotation.Rollback;
 import org.springframework.transaction.annotation.Transactional;
 import study.datajpa.dto.MemberDto;
@@ -21,6 +27,8 @@ import static org.assertj.core.api.Assertions.*;
 class MemberRepositoryTest {
     @Autowired MemberRepository memberRepository;
     @Autowired TeamRepository teamRepository;
+    @PersistenceContext
+    EntityManager em;
     @Test
     public void testMember(){
         //스프링 데이터 jpa가 구현 클래스 대신생성, 따라서 인터페이스지만 사용가능
@@ -141,6 +149,58 @@ class MemberRepositoryTest {
 
         Optional<Member> aaa = memberRepository.findOptionalByUsername("AAA");
         System.out.println("aaa = " + aaa );
+    }
+    @Test
+    public void paging(){
+        //given
+        memberRepository.save(new Member("member1",10));
+        memberRepository.save(new Member("member2",10));
+        memberRepository.save(new Member("member3",10));
+        memberRepository.save(new Member("member4",10));
+        memberRepository.save(new Member("member5",10));
+
+        int age = 10;
+        //pageable interface구현체 , 보통 PageRequest 많이 씀
+        PageRequest pageRequest = PageRequest.of(0, 3, Sort.Direction.DESC, "username");//sort생략가능
+
+        //when  //반환타입이 slice면 totalCount안날리고 page면 날림 , slice면 size+1개가져옴
+        Page<Member> page = memberRepository.findByAge(age, pageRequest);
+//        Slice<Member> page = memberRepository.findByAge(age, pageRequest);
+//        List<Member> page = memberRepository.findByAge(age, pageRequest); 걍 list로받아도됨 밑에기능은 안되지만 걍 짤라서가져오고싶을때 사용하면댐
+        Page<MemberDto> memberDtos = page.map(m -> new MemberDto(m.getId(), m.getUsername(), null));
+
+        //then
+        List<Member> content = page.getContent();//페이지에들어있는 컨텐츠꺼냄
+        long totalElements = page.getTotalElements();
+
+        assertThat(content.size()).isEqualTo(3);        //row
+        assertThat(page.getTotalElements()).isEqualTo(5);//totalCount
+        assertThat(page.getNumber()).isEqualTo(0);      //현재페이지
+        assertThat(page.getTotalPages()).isEqualTo(2);  //총페이지
+        assertThat(page.isFirst()).isTrue();  //첫페이지냐
+        assertThat(page.hasNext()).isTrue();  //다음페이지가있냐
+    }
+    @Test
+    public void bulkUpdate(){
+        //given
+        memberRepository.save(new Member("member1",10));
+        memberRepository.save(new Member("member2",19));
+        memberRepository.save(new Member("member3",20));
+        memberRepository.save(new Member("member4",21));
+        memberRepository.save(new Member("member5",40));
+
+        //when
+        int resultCount = memberRepository.bulkAgePlus(20);
+        //벌크연산은 영속성컨텍스트와 관련없이 실행되기때문에 영속성컨텍스트 한번날려줘야함(초기화), 벌크연산만하는 트랜잭션이면안날려도댐
+//        em.clear(); //날림     이러면 age 41로조회됨 날림없으면 걍 40으로나옴
+//      하지만 벌크연산쿼리에 @Modifying(clearAutomatically = true) 붙이면 자동으로 쿼리날리고서 clear됨
+        List<Member> result = memberRepository.findListByUsername("member5");
+        Member member5 = result.get(0);
+        System.out.println("member5 = " + member5);
+
+
+        //then
+        assertThat(resultCount).isEqualTo(3);
     }
 
 }
