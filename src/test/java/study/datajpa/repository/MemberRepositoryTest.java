@@ -203,4 +203,34 @@ class MemberRepositoryTest {
         assertThat(resultCount).isEqualTo(3);
     }
 
+    @Test
+    public void findMemberLazy() throws Exception{
+        //given
+        //member1 -> teamA
+        //member2 -> teamB
+
+        Team teamA = new Team("testA");
+        Team teamB = new Team("testB");
+        teamRepository.save(teamA);
+        teamRepository.save(teamB);
+        Member member1 = new Member("member1",10,teamA);
+        Member member2 = new Member("member2",10,teamB);
+        memberRepository.save(member1);
+        memberRepository.save(member2);
+
+        em.flush();
+        em.clear();//영속성컨텍스트 초기화
+
+        //when N + 1 @EntityGraph로 해결가능 간단할땐 이걸로쓰면댐 복잡하면 jpql fetch join
+        //select Member
+        List<Member> memberList = memberRepository.findByUsername("member1");
+        for (Member member : memberList) {
+            System.out.println("member.getUsername() = " + member.getUsername());
+            System.out.println("member.getTeam().getClass() = " + member.getTeam().getClass());
+            System.out.println("member.getTeam().getName() = " + member.getTeam().getName());
+        }
+
+        //then
+    }
+
 }
