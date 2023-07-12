@@ -232,5 +232,33 @@ class MemberRepositoryTest {
 
         //then
     }
+    @Test
+    public void queryHint(){
+        //given
+        Member member1 = new Member("member1", 10);
+        memberRepository.save(member1);
+        em.flush();
+        em.clear();
+
+        //when
+        Member findMember = memberRepository.findReadOnlyByUsername("member1");   //cf.실무에서는 Optional똑바로사용해랑
+        findMember.setUsername("member2");
+        em.flush();
+        //@QueryHints 사용하면 flush해도 readOnly이기때문에 변경감지안됨. 조회만한다면 성능최적화를 위해 쓸수있지만 그닥많이쓰진않는다
+    }
+
+    @Test
+    public void lock(){
+        //given
+        Member member1 = new Member("member1", 10);
+        memberRepository.save(member1);
+        em.flush();
+        em.clear();
+
+        //when
+        List<Member> findMembers = memberRepository.findLockByUsername("member1");
+        //select ~ for update 붙음 실시간트래픽이 많은 서비스에서는 최대한걸지말고 옵티미스틱락이 낫다
+        //실시간트래픽보다는 정합성이 중요하다면 페시미스틱 락을 사용하삼
+    }
 
 }
